@@ -10,10 +10,17 @@ use nom::error::context;
 
 use either::*;
 use nom::{
-    bytes::complete::*, combinator::*, error::*, multi::fold_many1, sequence::*, IResult, Parser,
+    branch::alt, bytes::complete::*, combinator::*, error::*, multi::fold_many1, sequence::*,
+    IResult, Parser,
 };
 
 use std::num::ParseIntError;
+
+// pub(crate) fn decimal_number(i: &str) -> IResult<&str, DecimalNumber> {
+//     alt((decimal_number, base_unsigned_number))(i)
+// }
+
+// pub(crate) fn base_unsigned_number(i: &str)
 
 pub(crate) fn non_zero_unsigned_number(i: &str) -> IResult<&str, NonZeroUnsignedNumber> {
     let (r, h) = non_zero_decimal_digit(i)?;
@@ -39,6 +46,21 @@ pub(crate) fn us_decimal_digit(i: &str) -> IResult<&str, Either<Us, DecimalDigit
     }
     let (r, d) = decimal_digit(i)?;
     Ok((r, Either::Right(d)))
+}
+
+pub(crate) fn signed(i: &str) -> IResult<&str, Signed> {
+    if let Ok((r, c)) = nom::character::complete::char::<_, ()>('\'')(i) {
+        if let Ok((r1, c)) = nom::character::complete::one_of::<_, _, ()>("sS")(r) {
+            return Ok((r1, Signed(Some(c))));
+        }
+        return Ok((r, Signed(None)));
+    }
+    Ok((i, Signed(None)))
+}
+
+pub(crate) fn d(i: &str) -> IResult<&str, D> {
+    let (r, c) = nom::character::complete::one_of("dD")(i)?;
+    Ok((r, D(c)))
 }
 
 pub(crate) fn non_zero_decimal_digit(i: &str) -> IResult<&str, NonZeroDecimalDigit> {
@@ -73,9 +95,29 @@ pub(crate) fn octal_digit(i: &str) -> IResult<&str, OctalDigit> {
     Ok((r, OctalDigit::Digit(c)))
 }
 
+pub(crate) fn hex_digit(i: &str) -> IResult<&str, HexDigit> {
+    if let Ok((r, c)) = nom::character::complete::one_of::<_, _, ()>("xX")(i) {
+        return Ok((r, HexDigit::X(c)));
+    }
+    if let Ok((r, c)) = nom::character::complete::one_of::<_, _, ()>("zZ?")(i) {
+        return Ok((r, HexDigit::Z(c)));
+    }
+    let (r, c) = nom::character::complete::one_of("0123456789abcdefABCDEF")(i)?;
+    Ok((r, HexDigit::Digit(c)))
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    fn test_decimal_number() {
+        let s = "1_3_4__5";
+        let (_r, c1) = non_zero_unsigned_number(s).unwrap();
+        println!("u {:?} ", c1);
+        println!("u {}", c1);
+        assert_eq!(format!("{}", c1), s);
+    }
 
     #[test]
     fn test_non_zero_unsigned_number() {
@@ -111,6 +153,38 @@ mod test {
         let (_s, d2) = us_decimal_digit(r).unwrap();
         println!("d1 {:?}, {}", d1, d1);
         println!("d2 {:?}, {}", d2, d2);
+    }
+
+    #[test]
+    fn test_signed() {
+        let s = "'s'S'_";
+        let (r, s1) = signed(s).unwrap();
+        let (r, s2) = signed(r).unwrap();
+        let (_r, s3) = signed(r).unwrap();
+        // let (_s, d2) = us_decimal_digit(r).unwrap();
+        println!("s1 {:?}, {}", s1, s1);
+        println!("s2 {:?}, {}", s2, s2);
+        println!("s3 {:?}, {}", s3, s3);
+
+        assert_eq!(format!("{}", s1), "'s");
+        assert_eq!(format!("{}", s2), "'S");
+        assert_eq!(format!("{}", s3), "'");
+    }
+
+    #[test]
+    fn test_d() {
+        let s = "dD_";
+        let (r, d1) = d(s).unwrap();
+        let (r, d2) = d(r).unwrap();
+        let r = d(r);
+
+        println!("d1 {:?}, {}", d1, d1);
+        println!("d2 {:?}, {}", d2, d2);
+        println!("r {:?}", r);
+
+        assert_eq!(format!("{}", d1), "d");
+        assert_eq!(format!("{}", d2), "D");
+        assert!(r.is_err());
     }
 
     #[test]
@@ -177,6 +251,38 @@ mod test {
         assert_eq!(format!("{}", b1), "0");
         assert_eq!(format!("{}", b2), "1");
         assert_eq!(format!("{}", b3), "3");
+        assert_eq!(format!("{}", b4), "x");
+        assert_eq!(format!("{}", b5), "X");
+        assert_eq!(format!("{}", b6), "z");
+        assert_eq!(format!("{}", b7), "Z");
+        assert_eq!(format!("{}", b8), "?");
+        assert!(b9.is_err());
+    }
+
+    #[test]
+    fn test_hex_digit() {
+        let s = "afBxXzZ?g";
+        let (r, b1) = hex_digit(s).unwrap();
+        let (r, b2) = hex_digit(r).unwrap();
+        let (r, b3) = hex_digit(r).unwrap();
+        let (r, b4) = hex_digit(r).unwrap();
+        let (r, b5) = hex_digit(r).unwrap();
+        let (r, b6) = hex_digit(r).unwrap();
+        let (r, b7) = hex_digit(r).unwrap();
+        let (r, b8) = hex_digit(r).unwrap();
+        let b9 = hex_digit(r);
+        println!("b1 {:?} {}", b1, b1);
+        println!("b2 {:?} {}", b2, b2);
+        println!("b3 {:?} {}", b3, b3);
+        println!("b4 {:?} {}", b4, b4);
+        println!("b5 {:?} {}", b5, b5);
+        println!("b6 {:?} {}", b6, b6);
+        println!("b7 {:?} {}", b7, b7);
+        println!("b8 {:?} {}", b8, b8);
+        println!("b9 {:?} ", b9);
+        assert_eq!(format!("{}", b1), "a");
+        assert_eq!(format!("{}", b2), "f");
+        assert_eq!(format!("{}", b3), "B");
         assert_eq!(format!("{}", b4), "x");
         assert_eq!(format!("{}", b5), "X");
         assert_eq!(format!("{}", b6), "z");

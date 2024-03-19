@@ -177,19 +177,40 @@ enum Numbers {
 }
 
 #[derive(Debug, PartialEq)]
+#[allow(clippy::enum_variant_names)]
 enum IntegralNumber {
     DecimalNumber(DecimalNumber),
-    // OctalNumber,
-    // BinaryNumber(Option(Size), BinaryBase, BinaryValue),
-    // HexNumber,
+    OctalNumber(OctalNumber),
+    BinaryNumber(BinaryNumber),
+    HexNumber(HexNumber),
 }
 
 #[derive(Debug, PartialEq)]
-enum DecimalNumber {
+pub(crate) enum DecimalNumber {
     UnsignedNumber(UnsignedNumber),
-    // | [ size ] decimal_base unsigned_number
+    BaseUnsignedNumber(Option<Size>, DecimalBase, UnsignedNumber),
     // | [ size ] decimal_base x_digit { _ }
     // | [ size ] decimal_base z_digit { _ }
+}
+
+type Size = NonZeroUnsignedNumber;
+
+#[derive(Debug, PartialEq)]
+pub(crate) struct Signed(pub(crate) Option<char>);
+
+#[derive(Debug, PartialEq)]
+pub(crate) enum OctalNumber {
+    UnsignedNumber(UnsignedNumber),
+}
+
+#[derive(Debug, PartialEq)]
+pub(crate) enum HexNumber {
+    UnsignedNumber(UnsignedNumber),
+}
+
+#[derive(Debug, PartialEq)]
+enum BinaryNumber {
+    UnsignedNumber(UnsignedNumber),
 }
 
 #[derive(Debug, PartialEq)]
@@ -217,7 +238,19 @@ pub(crate) struct OctalValue {
 }
 
 #[derive(Debug, PartialEq)]
+pub(crate) struct HexValue {
+    pub(crate) h: HexDigit,
+    pub(crate) t: Vec<Either<Us, HexDigit>>,
+}
+
+#[derive(Debug, PartialEq)]
 pub(crate) struct Us(pub(crate) char);
+
+#[derive(Debug, PartialEq)]
+pub(crate) struct DecimalBase(pub(crate) Signed, pub(crate) D);
+
+#[derive(Debug, PartialEq)]
+pub(crate) struct D(pub(crate) char);
 
 #[derive(Debug, PartialEq)]
 pub(crate) struct NonZeroDecimalDigit {
@@ -243,7 +276,28 @@ pub(crate) enum OctalDigit {
     Digit(char),
 }
 
+#[derive(Debug, PartialEq)]
+pub(crate) enum HexDigit {
+    X(char),
+    Z(char),
+    Digit(char),
+}
+
 use std::fmt;
+
+impl fmt::Display for DecimalNumber {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            DecimalNumber::UnsignedNumber(u) => write!(f, "{}", u),
+            DecimalNumber::BaseUnsignedNumber(s, d, u) => {
+                if let Some(s) = s {
+                    write!(f, "{}", s);
+                }
+                write!(f, "{}{}", u, d)
+            }
+        }
+    }
+}
 
 impl fmt::Display for NonZeroUnsignedNumber {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -277,6 +331,27 @@ impl fmt::Display for Us {
     }
 }
 
+impl fmt::Display for Signed {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.0 {
+            Some(c) => write!(f, "'{}", c),
+            None => write!(f, "'"),
+        }
+    }
+}
+
+impl fmt::Display for DecimalBase {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}{}", self.0, self.1)
+    }
+}
+
+impl fmt::Display for D {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 impl fmt::Display for DecimalDigit {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.c)
@@ -299,6 +374,16 @@ impl fmt::Display for OctalDigit {
             OctalDigit::X(x) => write!(f, "{}", x),
             OctalDigit::Z(z) => write!(f, "{}", z),
             OctalDigit::Digit(c) => write!(f, "{}", c),
+        }
+    }
+}
+
+impl fmt::Display for HexDigit {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            HexDigit::X(x) => write!(f, "{}", x),
+            HexDigit::Z(z) => write!(f, "{}", z),
+            HexDigit::Digit(c) => write!(f, "{}", c),
         }
     }
 }
