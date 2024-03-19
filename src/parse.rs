@@ -58,11 +58,19 @@ pub(crate) fn binary_digit(i: &str) -> IResult<&str, BinaryDigit> {
     if let Ok((r, c)) = nom::character::complete::one_of::<_, _, ()>("zZ?")(i) {
         return Ok((r, BinaryDigit::Z(c)));
     }
-    if let Ok((r, c)) = nom::character::complete::char::<_, nom::error::Error<&str>>('0')(i) {
-        return Ok((r, BinaryDigit::Zero(c)));
+    let (r, c) = nom::character::complete::one_of("01")(i)?;
+    Ok((r, BinaryDigit::Digit(c)))
+}
+
+pub(crate) fn octal_digit(i: &str) -> IResult<&str, OctalDigit> {
+    if let Ok((r, c)) = nom::character::complete::one_of::<_, _, ()>("xX")(i) {
+        return Ok((r, OctalDigit::X(c)));
     }
-    let (r, c) = nom::character::complete::char('1')(i)?;
-    Ok((r, BinaryDigit::One(c)))
+    if let Ok((r, c)) = nom::character::complete::one_of::<_, _, ()>("zZ?")(i) {
+        return Ok((r, OctalDigit::Z(c)));
+    }
+    let (r, c) = nom::character::complete::one_of("01234567")(i)?;
+    Ok((r, OctalDigit::Digit(c)))
 }
 
 #[cfg(test)]
@@ -137,6 +145,38 @@ mod test {
         assert_eq!(format!("{}", b1), "0");
         assert_eq!(format!("{}", b2), "1");
         assert_eq!(format!("{}", b3), "0");
+        assert_eq!(format!("{}", b4), "x");
+        assert_eq!(format!("{}", b5), "X");
+        assert_eq!(format!("{}", b6), "z");
+        assert_eq!(format!("{}", b7), "Z");
+        assert_eq!(format!("{}", b8), "?");
+        assert!(b9.is_err());
+    }
+
+    #[test]
+    fn test_octal_digit() {
+        let s = "013xXzZ?a";
+        let (r, b1) = octal_digit(s).unwrap();
+        let (r, b2) = octal_digit(r).unwrap();
+        let (r, b3) = octal_digit(r).unwrap();
+        let (r, b4) = octal_digit(r).unwrap();
+        let (r, b5) = octal_digit(r).unwrap();
+        let (r, b6) = octal_digit(r).unwrap();
+        let (r, b7) = octal_digit(r).unwrap();
+        let (r, b8) = octal_digit(r).unwrap();
+        let b9 = octal_digit(r);
+        println!("b1 {:?} {}", b1, b1);
+        println!("b2 {:?} {}", b2, b2);
+        println!("b3 {:?} {}", b3, b3);
+        println!("b4 {:?} {}", b4, b4);
+        println!("b5 {:?} {}", b5, b5);
+        println!("b6 {:?} {}", b6, b6);
+        println!("b7 {:?} {}", b7, b7);
+        println!("b8 {:?} {}", b8, b8);
+        println!("b9 {:?} ", b9);
+        assert_eq!(format!("{}", b1), "0");
+        assert_eq!(format!("{}", b2), "1");
+        assert_eq!(format!("{}", b3), "3");
         assert_eq!(format!("{}", b4), "x");
         assert_eq!(format!("{}", b5), "X");
         assert_eq!(format!("{}", b6), "z");

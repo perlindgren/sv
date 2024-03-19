@@ -211,6 +211,12 @@ pub(crate) struct BinaryValue {
 }
 
 #[derive(Debug, PartialEq)]
+pub(crate) struct OctalValue {
+    pub(crate) h: OctalDigit,
+    pub(crate) t: Vec<Either<Us, OctalDigit>>,
+}
+
+#[derive(Debug, PartialEq)]
 pub(crate) struct Us(pub(crate) char);
 
 #[derive(Debug, PartialEq)]
@@ -227,8 +233,14 @@ pub(crate) struct DecimalDigit {
 pub(crate) enum BinaryDigit {
     X(char),
     Z(char),
-    Zero(char),
-    One(char),
+    Digit(char),
+}
+
+#[derive(Debug, PartialEq)]
+pub(crate) enum OctalDigit {
+    X(char),
+    Z(char),
+    Digit(char),
 }
 
 use std::fmt;
@@ -276,8 +288,17 @@ impl fmt::Display for BinaryDigit {
         match self {
             BinaryDigit::X(x) => write!(f, "{}", x),
             BinaryDigit::Z(z) => write!(f, "{}", z),
-            BinaryDigit::Zero(c) => write!(f, "{}", c),
-            BinaryDigit::One(c) => write!(f, "{}", c),
+            BinaryDigit::Digit(c) => write!(f, "{}", c),
+        }
+    }
+}
+
+impl fmt::Display for OctalDigit {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            OctalDigit::X(x) => write!(f, "{}", x),
+            OctalDigit::Z(z) => write!(f, "{}", z),
+            OctalDigit::Digit(c) => write!(f, "{}", c),
         }
     }
 }
