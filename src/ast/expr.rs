@@ -193,20 +193,58 @@ enum DecimalNumber {
 }
 
 #[derive(Debug, PartialEq)]
+pub(crate) struct NonZeroUnsignedNumber {
+    pub(crate) h: NonZeroDecimalDigit,
+    pub(crate) t: Vec<Either<Us, DecimalDigit>>,
+}
+
+#[derive(Debug, PartialEq)]
 pub(crate) struct UnsignedNumber {
     pub(crate) h: DecimalDigit,
     pub(crate) t: Vec<Either<Us, DecimalDigit>>,
 }
 
 #[derive(Debug, PartialEq)]
+pub(crate) struct BinaryValue {
+    pub(crate) h: BinaryDigit,
+    pub(crate) t: Vec<Either<Us, BinaryDigit>>,
+}
+
+#[derive(Debug, PartialEq)]
 pub(crate) struct Us(pub(crate) char);
+
+#[derive(Debug, PartialEq)]
+pub(crate) struct NonZeroDecimalDigit {
+    pub(crate) c: char,
+}
 
 #[derive(Debug, PartialEq)]
 pub(crate) struct DecimalDigit {
     pub(crate) c: char,
 }
 
+#[derive(Debug, PartialEq)]
+pub(crate) enum BinaryDigit {
+    X(char),
+    Z(char),
+    Zero(char),
+    One(char),
+}
+
 use std::fmt;
+
+impl fmt::Display for NonZeroUnsignedNumber {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.h);
+        for d in &self.t {
+            match d {
+                Either::Left(l) => write!(f, "{}", l),
+                Either::Right(r) => write!(f, "{}", r),
+            };
+        }
+        Ok(())
+    }
+}
 
 impl fmt::Display for UnsignedNumber {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -233,10 +271,22 @@ impl fmt::Display for DecimalDigit {
     }
 }
 
-// struct NonZeroUnsignedNumber {
-//     h: NonZeroDecimalDigit,
-//     t: Vec<__DecimalDigit>,
-// }
+impl fmt::Display for BinaryDigit {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            BinaryDigit::X(x) => write!(f, "{}", x),
+            BinaryDigit::Z(z) => write!(f, "{}", z),
+            BinaryDigit::Zero(c) => write!(f, "{}", c),
+            BinaryDigit::One(c) => write!(f, "{}", c),
+        }
+    }
+}
+
+impl fmt::Display for NonZeroDecimalDigit {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.c)
+    }
+}
 
 // enum NonZeroDecimalDigit { _ | decimal_digit }
 
