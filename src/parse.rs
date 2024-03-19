@@ -1,13 +1,71 @@
 // simple nom example
-//! This module contains a parser that parses a hex color string into a [Color] struct.
-//! The hex color string can be in the following format `#RRGGBB`.
-//! For example, `#FF0000` is red.
 
-#[allow(unused_imports)]
-use crate::ast::*;
+#![allow(unused_imports, dead_code)]
 
-use nom::{bytes::complete::*, combinator::*, error::*, sequence::*, IResult, Parser};
+use crate::ast::expr::*;
+
+use nom::character::complete::*;
+use nom::combinator::{complete, map_res};
+use nom::error::context;
+
+use either::*;
+use nom::{
+    bytes::complete::*, combinator::*, error::*, multi::fold_many1, sequence::*, IResult, Parser,
+};
+
 use std::num::ParseIntError;
+
+pub(crate) fn unsigned_number(i: &str) -> IResult<&str, UnsignedNumber> {
+    let (r, h) = decimal_digit(i)?;
+    let (r, t) = fold_many1(us_decimal_digit, Vec::new, |mut acc: Vec<_>, item| {
+        acc.push(item);
+        acc
+    })(r)?;
+    Ok((r, UnsignedNumber { h, t }))
+}
+
+pub(crate) fn us_decimal_digit(i: &str) -> IResult<&str, Either<Us, DecimalDigit>> {
+    if let Ok((r, c)) = nom::character::complete::char::<_, ()>('_')(i) {
+        return Ok((r, Either::Left(Us(c))));
+    }
+    let (r, d) = decimal_digit(i)?;
+    Ok((r, Either::Right(d)))
+}
+
+pub(crate) fn decimal_digit(i: &str) -> IResult<&str, DecimalDigit> {
+    let (r, c) = nom::character::complete::one_of("0123456789")(i)?;
+    Ok((r, DecimalDigit { c }))
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_unsigned_number() {
+        let s = "0_3_4__5";
+        let (_r, c1) = unsigned_number(s).unwrap();
+        println!("u {:?} ", c1);
+        println!("u {}", c1);
+        assert_eq!(format!("{}", c1), s);
+    }
+
+    #[test]
+    fn test_us_decimal_digit() {
+        let (r, d1) = us_decimal_digit("0_34").unwrap();
+        let (_s, d2) = us_decimal_digit(r).unwrap();
+        println!("d1 {:?}, {}", d1, d1);
+        println!("d2 {:?}, {}", d2, d2);
+    }
+
+    #[test]
+    fn test_decimal_digit() {
+        let (r, d1) = decimal_digit("0234").unwrap();
+        let (_s, d2) = decimal_digit(r).unwrap();
+        println!("c1 {:?} {}", d1, d1);
+        println!("c2 {:?} {}", d2, d2);
+    }
+}
 
 #[derive(Debug, PartialEq)]
 pub struct Color {

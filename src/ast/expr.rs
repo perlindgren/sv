@@ -1,8 +1,6 @@
 // ast/expr
 // expressions
 use either::*;
-use nom::{IResult, Parser};
-use nom_derive::*;
 
 // inc_or_dec_expression
 //     inc_or_dec_operator { attribute_instance } variable_lvalue
@@ -195,41 +193,45 @@ enum DecimalNumber {
 }
 
 #[derive(Debug, PartialEq)]
-struct UnsignedNumber {
-    h: DecimalDigit,
-    t: Vec<SvEither<Us, DecimalDigit>>,
+pub(crate) struct UnsignedNumber {
+    pub(crate) h: DecimalDigit,
+    pub(crate) t: Vec<Either<Us, DecimalDigit>>,
 }
 
 #[derive(Debug, PartialEq)]
-struct Us(char);
+pub(crate) struct Us(pub(crate) char);
 
 #[derive(Debug, PartialEq)]
-struct SvEither<L, R>(Either<L, R>);
-
-#[derive(Debug, PartialEq, Nom)]
-struct DecimalDigits {
-    c: Vec<u8>,
-}
-#[derive(Debug, PartialEq, Nom)]
-struct DecimalDigit {
-    c: u8,
+pub(crate) struct DecimalDigit {
+    pub(crate) c: char,
 }
 
-#[test]
-fn test() {
-    let c = DecimalDigit::parse("0".as_bytes());
-    println!("c {:?}", c);
+use std::fmt;
+
+impl fmt::Display for UnsignedNumber {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.h);
+        for d in &self.t {
+            match d {
+                Either::Left(l) => write!(f, "{}", l),
+                Either::Right(r) => write!(f, "{}", r),
+            };
+        }
+        Ok(())
+    }
 }
-// use nom::combinator::map;
-// use nom::number::complete::le_u16;
-// impl<'a> Parse<&'a [u8]> for S2 {
-//     fn parse(i: &'a [u8]) -> IResult<&'a [u8], S2> {
-//         map(
-//             u8,           // little-endian
-//             |c| S2 { c }, // return a struct S2
-//         )(i)
-//     }
-// }
+
+impl fmt::Display for Us {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl fmt::Display for DecimalDigit {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.c)
+    }
+}
 
 // struct NonZeroUnsignedNumber {
 //     h: NonZeroDecimalDigit,
